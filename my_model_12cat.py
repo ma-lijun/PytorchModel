@@ -31,12 +31,16 @@ images_folder_val = ''
 device = torch.device('cuda:0')
 
 image_extentions = ['.png', '.PNG', '.jpg', '.JPG']
+ORIGIN_SIZE = (600, 600)
+INPUT_SIZE = (448, 448)
 
 def default_loader(path):
     return Image.open(path).convert('RGB')
 
 default_transform = transforms.Compose(
-    [transforms.Resize((224,224)),
+    [transforms.Resize(ORIGIN_SIZE, Image.BILINEAR),
+     transforms.RandomCrop(INPUT_SIZE),
+     transforms.RandomHorizontalFlip(),
      transforms.ToTensor(),
      transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
      ]
@@ -52,12 +56,16 @@ normalize_05 = transforms.Normalize(
     std=[0.5, 0.5, 0.5]
 )
 
+normalize_train = transforms.Normalize(
+    mean=[0.5, 0.5, 0.5],
+    std=[0.5, 0.5, 0.5]
+)
+
 normalize_dataset = transforms.Normalize(
     mean=[0.463, 0.400, 0.486],
     std=[0.191, 0.212, 0.170]
 )
 
-INPUT_SIZE = (448, 448)
 
 class MyImageDataset(Dataset):
 
@@ -121,15 +129,16 @@ class MyImageDataset(Dataset):
         if len(img.shape) == 2:
             img = np.stack([img] * 3, 2)
         img = Image.fromarray(img, mode='RGB')
-        
-        
-        img = transforms.Resize((600, 600), Image.BILINEAR)(img)
-        img = transforms.RandomCrop(INPUT_SIZE)(img)
-        img = transforms.RandomHorizontalFlip()(img)
-        img = transforms.ToTensor()(img)
-        img = transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])(img)
 
-        # img = self.transforms(_img2)
+        img = self.transforms(img)
+        
+        
+        # img = transforms.Resize((600, 600), Image.BILINEAR)(img)
+        # img = transforms.RandomCrop(INPUT_SIZE)(img)
+        # img = transforms.RandomHorizontalFlip()(img)
+        # img = transforms.ToTensor()(img)
+        # img = transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])(img)
+
         return img, label
 
 
@@ -241,7 +250,7 @@ def train_model(model, criterion, optimizer, scheduler, pre_epoch, num_epochs):
 
             if phase == 'val' and epoch_acc> best_acc:
                 best_acc = epoch_acc
-                checkpoint_path = 'state_best.tar'
+                checkpoint_path = 'state_best_score_'+'{:.4f}'.format(best_acc)+'.tar'
                 torch.save({'epoch':epoch,
                             'model_state_dict':model.state_dict(),
                             'optimizer_state_dict': optimizer.state_dict(),
@@ -269,4 +278,34 @@ pre_epoch = 0
 
 model = train_model(model, criterion, optimizer, exp_lr_scheduler, pre_epoch, 10)
 
+
+# # predict function
+# def predict(input, model, device):
+#   # model.to(device)
+#   with torch.no_grad():
+#     input=input.to(device)
+#     out = model(input)
+#     _, pre = torch.max(out.data, 1)
+#     return pre.item()
+#
+# if __name__ == '__main__':
+#     model = torch.load('state_best.tar')
+#     # model.eval()
+#
+#     # transform = transforms.Compose(
+#     #     [transforms.Grayscale(),
+#     #      transforms.Resize(opt.img_size),
+#     #      normalize_05,
+#     #      transforms.ToTensor(), ]
+#     # )
+#     pre_img_path = os.path.join(bath_path,"cat_12_train//DbXaTs8WgFfldEKViMq50pZR9uGxrB7L.jpg")
+#     img = Image.open(pre_img_path)
+#     img.show()
+#     img = img.convert('RGB')
+#     print(type(img))
+#     # img = transform(img)
+#     img = default_transform(img)
+#     img = img.unsqueeze(0)
+#
+#     predict(img, model, device)
 
