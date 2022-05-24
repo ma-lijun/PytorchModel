@@ -276,36 +276,55 @@ criterion = nn.CrossEntropyLoss()
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 pre_epoch = 0
 
-model = train_model(model, criterion, optimizer, exp_lr_scheduler, pre_epoch, 10)
+# model_trained = train_model(model, criterion, optimizer, exp_lr_scheduler, pre_epoch, 10)
 
 
-# # predict function
-# def predict(input, model, device):
-#   # model.to(device)
-#   with torch.no_grad():
-#     input=input.to(device)
-#     out = model(input)
-#     _, pre = torch.max(out.data, 1)
-#     return pre.item()
-#
-# if __name__ == '__main__':
-#     model = torch.load('state_best.tar')
-#     # model.eval()
-#
-#     # transform = transforms.Compose(
-#     #     [transforms.Grayscale(),
-#     #      transforms.Resize(opt.img_size),
-#     #      normalize_05,
-#     #      transforms.ToTensor(), ]
-#     # )
-#     pre_img_path = os.path.join(bath_path,"cat_12_train//DbXaTs8WgFfldEKViMq50pZR9uGxrB7L.jpg")
-#     img = Image.open(pre_img_path)
-#     img.show()
-#     img = img.convert('RGB')
-#     print(type(img))
-#     # img = transform(img)
-#     img = default_transform(img)
-#     img = img.unsqueeze(0)
-#
-#     predict(img, model, device)
+# predict function
+def predict(input, model, device):
+  # model.to(device)
+  with torch.no_grad():
+    input=input.to(device)
+    out = model(input)
+    _, pre = torch.max(out.data, 1)
+    return pre.item()
+
+if __name__ == '__main__':
+    # model = torch.load('state_best.tar')
+
+    # resnet = resnet50(pretrained=True)
+    # resnet.load_state_dict(torch.load('ckp/model.pth'))
+    # model.eval()
+
+    # transform = transforms.Compose(
+    #     [transforms.Grayscale(),
+    #      transforms.Resize(opt.img_size),
+    #      normalize_05,
+    #      transforms.ToTensor(), ]
+    # )
+    #
+
+    # todo 模型恢复示例
+    # model = ModelClass(*args, **kwargs)
+    # model.load_state_dict(torch.load(PATH))
+    #
+    # #example
+    # resnet=resnet50(pretrained=True)
+    checkpoint = torch.load('./state_best.tar')
+    model.load_state_dict(checkpoint['model_state_dict'])
+    # model.load_state_dict(torch.load('state_best.tar'))
+
+    # resnet=resnet50(pretrained=True)
+    # resnet.load_state_dict(torch.load('ckp/model.pth'))
+
+    pre_img_path = os.path.join(bath_path,"cat_12_train/i6duIYpPQTK0FgVa2eRBUCytcjEqr3v1.jpg")
+    img = Image.open(pre_img_path)
+    # img.show()
+    img = img.convert('RGB')
+    print(type(img))
+    # img = transform(img)
+    img = default_transform(img)
+    img = img.unsqueeze(0)
+
+    pre_res = predict(img, model, device)
+    print("pre: ", pre_res)
 
