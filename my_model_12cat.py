@@ -218,7 +218,10 @@ def train_model(model, criterion, optimizer, scheduler, pre_epoch, num_epochs):
     return model
 
 #  todo 预测时候注销，初次训练使用?
-model = initialize_model('resnet34', num_categories, model_path=True)
+model = initialize_model('resnet18', num_categories, model_path=True)
+# model = models.resnet34()
+num_ftrs = model.fc.in_features
+model.fc = nn.Linear(num_ftrs, num_categories)
 optimizer = optim.SGD(model.fc.parameters(), lr=0.001, momentum=0.9)
 criterion = nn.CrossEntropyLoss()
 # 每隔7个epoch学习率下降一次
@@ -250,7 +253,7 @@ def read_img(bath_path, img_name=""):
     # img.show()
     img = img.convert('RGB')
     img = default_transform(img)
-    # 扩展第一维度，bach * chanel * width * height
+    # 扩展第一维度，bach * chanel * height * width
     img = img.unsqueeze(0)
     return img
 
@@ -266,6 +269,7 @@ if __name__ == '__main__':
     # state_best_score_0.9083.tar
     # checkpoint = torch.load('./state_best_score_0.9083.tar')
     # model.load_state_dict(checkpoint['model_state_dict'])
+    model.to(device)
 
     model_trained = train_model(model, criterion, optimizer, exp_lr_scheduler, pre_epoch, 15)
 
@@ -296,7 +300,10 @@ if __name__ == '__main__':
         cur_img = read_img(r'G://Users//AiStudio_cat12//cat_12_test', img_name=filename)
         # 使用训练结束后的模型，参数是被训练过的
         pre_res = predict(cur_img, model_trained, device)
+        # pre_res = predict(cur_img, model, device)
         print("img_name:{},pre: {}".format(filename, pre_res))
         # 写入文件
-        f.write(f"cat_12_test/{filename},{pre_res}\n")
+        # f.write(f"cat_12_test/{filename},{pre_res}\n")
+        f.write(f"{filename},{pre_res}\n")
+        print(f"{filename},{pre_res}\n")
     f.close()
