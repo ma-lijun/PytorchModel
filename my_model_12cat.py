@@ -5,7 +5,6 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.optim import lr_scheduler
 from PIL import Image
-# import cv2
 import skimage.io as skiio
 import imageio
 import os
@@ -84,17 +83,10 @@ class MyImageDataset(Dataset):
             for line in fh:
                 line = line.strip('\n')
                 line = line.strip()
-                # image_path = bath_path+os.sep+line.split()[0]
                 image_path = os.path.join(bath_path, line.split()[0])
-                # print("image_path: ", image_path, line)
                 image_label = int(line.split()[1])
-                # imgs_Norm = list(zip(image_path, image_label))
-                # line.replace(" ", ",")
-                # location = line.find('/')
                 imgs.append(tuple((image_path, image_label)))
-                # imgs.append((line, int(line[location + 1:location + 4]) - 1))
 
-            # self.imgs = imgs
             self.images = imgs
 
         self.images_folder = images_folder
@@ -108,37 +100,11 @@ class MyImageDataset(Dataset):
 
     def __getitem__(self, index):
         filename, label = self.images[index]
-        # if self.images_folder:
-        #     img = Image.open(os.path.join(self.images_folder, filename)).covert('RGB')
-        # elif self.txt_path:
-        #     # path, label = self.imgs[index]
-        #     img = self.loader(self.path_pre + filename)
-        #     # img = self.loader(self.path_pre + path)
-        # img = self.loader(self.path_pre + filename)
-        # img = Image.open(os.path.join(self.images_folder, filename)).covert('RGB')
-        # image = Image.open(filename)
-        # image.show()
-        # img = Image.open(filename)
-        # img_pil_1 = np.array(img_pil)
-        #
-        # _img = skiio.imread(filename)
-
-        # _img = Image.open(filename)
-        # _img2 = _img.covert('RGB')
         img = imageio.imread(filename)
         if len(img.shape) == 2:
             img = np.stack([img] * 3, 2)
         img = Image.fromarray(img, mode='RGB')
-
         img = self.transforms(img)
-        
-        
-        # img = transforms.Resize((600, 600), Image.BILINEAR)(img)
-        # img = transforms.RandomCrop(INPUT_SIZE)(img)
-        # img = transforms.RandomHorizontalFlip()(img)
-        # img = transforms.ToTensor()(img)
-        # img = transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])(img)
-
         return img, label
 
 
@@ -164,15 +130,6 @@ def initialize_model(model_name, num_categories, finetuning=False, pretrained=Tr
         model = models.resnet18(pretrained=pretrained)
         if finetuning == True:
             pass
-            # 如果训练好的模型已经存在只需加载，不需要下载
-            # if model_path:
-            #     pre_dic = torch.load(r"G:\Users\pytorch_hub_checkpoints/resnet18-f37072fd.pth")
-            #     Low_rankmodel_dic = model.state_dict()
-            #     pre_dic = {k: v for k, v in pre_dic.items() if k in Low_rankmodel_dic}
-            #     Low_rankmodel_dic.update(pre_dic)
-            #     model.load_state_dict(Low_rankmodel_dic)
-            # else:
-            #     pass
         else:
             for param in model.parameters():
                 param.requires_grad = False
@@ -183,15 +140,6 @@ def initialize_model(model_name, num_categories, finetuning=False, pretrained=Tr
         model = models.resnet34(pretrained=pretrained)
         if finetuning == True:
             pass
-            # 如果训练好的模型已经存在只需加载，不需要下载
-            # if model_path:
-            #     pre_dic = torch.load(r"G:\Users\pytorch_hub_checkpoints/resnet34-b627a593.pth")
-            #     Low_rankmodel_dic = model.state_dict()
-            #     pre_dic = {k: v for k, v in pre_dic.items() if k in Low_rankmodel_dic}
-            #     Low_rankmodel_dic.update(pre_dic)
-            #     model.load_state_dict(Low_rankmodel_dic)
-            # else:
-            #     pass
         else:
             for param in model.parameters():
                 param.requires_grad = False
@@ -221,7 +169,6 @@ def train_model(model, criterion, optimizer, scheduler, pre_epoch, num_epochs):
             running_corrects = 0
 
             for batch_idx, (inputs, targets) in enumerate(train_loader):
-                # inputs, labels = inputs.to(device), targets.to(device)
                 inputs, labels = inputs.to(device), targets.to(device)
                 optimizer.zero_grad()
                 # torch.set_grad_enabled(False)
@@ -271,15 +218,14 @@ def train_model(model, criterion, optimizer, scheduler, pre_epoch, num_epochs):
     return model
 
 #  todo 预测时候注销，初次训练使用?
-model = initialize_model('resnet18', num_categories, model_path=True)
+model = initialize_model('resnet34', num_categories, model_path=True)
 optimizer = optim.SGD(model.fc.parameters(), lr=0.001, momentum=0.9)
 criterion = nn.CrossEntropyLoss()
 # 每隔7个epoch学习率下降一次
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
-pre_epoch = 5
+pre_epoch = 0
 
 # model_trained = train_model(model, criterion, optimizer, exp_lr_scheduler, pre_epoch, 10)
-
 
 # predict function
 def predict(input, model, device):
@@ -292,21 +238,17 @@ def predict(input, model, device):
 
 
 # 将图片读取转换为 预测需要的tensor格式
-def read_img(bath_path, img_name="cat_12_train/i6duIYpPQTK0FgVa2eRBUCytcjEqr3v1.jpg"):
+def read_img(bath_path, img_name=""):
     """
     将图片读取转换为 预测需要的tensor格式
     :param bath_path:
     :param img_name:
     :return:
     """
-    # img_name = "cat_12_train/i6duIYpPQTK0FgVa2eRBUCytcjEqr3v1.jpg"
-    # pre_img_path = os.path.join(bath_path, "cat_12_train/i6duIYpPQTK0FgVa2eRBUCytcjEqr3v1.jpg")
     pre_img_path = os.path.join(bath_path, img_name)
     img = Image.open(pre_img_path)
     # img.show()
     img = img.convert('RGB')
-    # print(type(img))
-    # img = transform(img)
     img = default_transform(img)
     # 扩展第一维度，bach * chanel * width * height
     img = img.unsqueeze(0)
@@ -314,20 +256,6 @@ def read_img(bath_path, img_name="cat_12_train/i6duIYpPQTK0FgVa2eRBUCytcjEqr3v1.
 
 
 if __name__ == '__main__':
-    # model = torch.load('state_best.tar')
-
-    # resnet = resnet50(pretrained=True)
-    # resnet.load_state_dict(torch.load('ckp/model.pth'))
-    # model.eval()
-
-    # transform = transforms.Compose(
-    #     [transforms.Grayscale(),
-    #      transforms.Resize(opt.img_size),
-    #      normalize_05,
-    #      transforms.ToTensor(), ]
-    # )
-    #
-
     # todo 模型恢复示例
     # model = ModelClass(*args, **kwargs)
     # model.load_state_dict(torch.load(PATH))
@@ -336,9 +264,8 @@ if __name__ == '__main__':
     # resnet=resnet50(pretrained=True)
     # checkpoint = torch.load('./state_best.tar')
     # state_best_score_0.9083.tar
-    checkpoint = torch.load('./state_best_score_0.9083.tar')
-
-    model.load_state_dict(checkpoint['model_state_dict'])
+    # checkpoint = torch.load('./state_best_score_0.9083.tar')
+    # model.load_state_dict(checkpoint['model_state_dict'])
 
     model_trained = train_model(model, criterion, optimizer, exp_lr_scheduler, pre_epoch, 15)
 
@@ -353,20 +280,13 @@ if __name__ == '__main__':
     # print("pre: ", pre_res)
 
     # 批量预测
-    # test_images文件夹批量预测
     import pathlib
     import os
-    # import paddlex as pdx
-
-    # 载入模型
-    # model = pdx.load_model('output/mobilenetv3_large/best_model')
 
     # 结果文件
     f = open("result.csv", "w")
     # f.write('image_id,label\n')
     # 遍历文件夹
-    # G:\Users\AiStudio_cat12\cat_12_test
-    # test_data_dir = pathlib.Path('data/test_images/')
     test_data_dir = pathlib.Path(r'G://Users//AiStudio_cat12//cat_12_test')
     # 不带目录，直接图片
     test_files = list(test_data_dir.glob('*.jpg'))
@@ -374,14 +294,9 @@ if __name__ == '__main__':
         filename = os.path.basename(myfile)
 
         cur_img = read_img(r'G://Users//AiStudio_cat12//cat_12_test', img_name=filename)
-        # pre_res = predict(cur_img, model, device)
         # 使用训练结束后的模型，参数是被训练过的
         pre_res = predict(cur_img, model_trained, device)
         print("img_name:{},pre: {}".format(filename, pre_res))
-        
-        # result = model.predict(str(myfile))
-        # filename = os.path.basename(myfile)
         # 写入文件
-        # f.write(f"{filename},{result[0]['category_id']}\n")
         f.write(f"cat_12_test/{filename},{pre_res}\n")
     f.close()
