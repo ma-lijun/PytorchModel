@@ -151,7 +151,7 @@ def initialize_model(model_name, num_categories, finetuning=False, pretrained=Tr
     return model
 
 
-def train_model(model, criterion, optimizer, scheduler, pre_epoch, num_epochs):
+def train_model(model, criterion, optimizer, scheduler, pre_epoch, num_epochs, model_name='resnet18'):
     since = time.time()
     best_acc = 0.0
 
@@ -200,6 +200,7 @@ def train_model(model, criterion, optimizer, scheduler, pre_epoch, num_epochs):
                 checkpoint_path = 'state_best.tar'
                 # checkpoint_path = 'state_best_score_'+'{:.4f}'.format(best_acc)+'.tar'
                 torch.save({'epoch':epoch,
+                            'model_name': model_name,
                             'model_state_dict':model.state_dict(),
                             'optimizer_state_dict': optimizer.state_dict(),
                             'loss': epoch_loss,
