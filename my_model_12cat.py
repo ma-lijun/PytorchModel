@@ -250,13 +250,15 @@ def train_model(model, criterion, optimizer, scheduler, pre_epoch, num_epochs):
 
             if phase == 'val' and epoch_acc> best_acc:
                 best_acc = epoch_acc
-                checkpoint_path = 'state_best_score_'+'{:.4f}'.format(best_acc)+'.tar'
+                checkpoint_path = 'state_best.tar'
+                # checkpoint_path = 'state_best_score_'+'{:.4f}'.format(best_acc)+'.tar'
                 torch.save({'epoch':epoch,
                             'model_state_dict':model.state_dict(),
                             'optimizer_state_dict': optimizer.state_dict(),
                             'loss': epoch_loss,
                             'acc': best_acc
                             }, checkpoint_path)
+                print("saved best acc :{:.4f}".format(best_acc))
         cur_time_elapsed = time.time() - since
         print('Epoch {:.0f}s：Training complate in {:.0f}m {:.0f}s'.format(epoch, cur_time_elapsed // 60, cur_time_elapsed % 60))
         print()
@@ -268,13 +270,13 @@ def train_model(model, criterion, optimizer, scheduler, pre_epoch, num_epochs):
     model.load_state_dict(checkpoint['model_state_dict'])
     return model
 
-
+#  todo 预测时候注销，初次训练使用?
 model = initialize_model('resnet18', num_categories, model_path=True)
 optimizer = optim.SGD(model.fc.parameters(), lr=0.001, momentum=0.9)
 criterion = nn.CrossEntropyLoss()
 # 每隔7个epoch学习率下降一次
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
-pre_epoch = 0
+pre_epoch = 5
 
 # model_trained = train_model(model, criterion, optimizer, exp_lr_scheduler, pre_epoch, 10)
 
@@ -287,6 +289,29 @@ def predict(input, model, device):
     out = model(input)
     _, pre = torch.max(out.data, 1)
     return pre.item()
+
+
+# 将图片读取转换为 预测需要的tensor格式
+def read_img(bath_path, img_name="cat_12_train/i6duIYpPQTK0FgVa2eRBUCytcjEqr3v1.jpg"):
+    """
+    将图片读取转换为 预测需要的tensor格式
+    :param bath_path:
+    :param img_name:
+    :return:
+    """
+    # img_name = "cat_12_train/i6duIYpPQTK0FgVa2eRBUCytcjEqr3v1.jpg"
+    # pre_img_path = os.path.join(bath_path, "cat_12_train/i6duIYpPQTK0FgVa2eRBUCytcjEqr3v1.jpg")
+    pre_img_path = os.path.join(bath_path, img_name)
+    img = Image.open(pre_img_path)
+    # img.show()
+    img = img.convert('RGB')
+    # print(type(img))
+    # img = transform(img)
+    img = default_transform(img)
+    # 扩展第一维度，bach * chanel * width * height
+    img = img.unsqueeze(0)
+    return img
+
 
 if __name__ == '__main__':
     # model = torch.load('state_best.tar')
@@ -309,22 +334,54 @@ if __name__ == '__main__':
     #
     # #example
     # resnet=resnet50(pretrained=True)
-    checkpoint = torch.load('./state_best.tar')
+    # checkpoint = torch.load('./state_best.tar')
+    # state_best_score_0.9083.tar
+    checkpoint = torch.load('./state_best_score_0.9083.tar')
+
     model.load_state_dict(checkpoint['model_state_dict'])
-    # model.load_state_dict(torch.load('state_best.tar'))
 
-    # resnet=resnet50(pretrained=True)
-    # resnet.load_state_dict(torch.load('ckp/model.pth'))
+    model_trained = train_model(model, criterion, optimizer, exp_lr_scheduler, pre_epoch, 15)
 
-    pre_img_path = os.path.join(bath_path,"cat_12_train/i6duIYpPQTK0FgVa2eRBUCytcjEqr3v1.jpg")
-    img = Image.open(pre_img_path)
-    # img.show()
-    img = img.convert('RGB')
-    print(type(img))
-    # img = transform(img)
-    img = default_transform(img)
-    img = img.unsqueeze(0)
 
-    pre_res = predict(img, model, device)
-    print("pre: ", pre_res)
+    # 单文件预测
+    # pre_img_path = os.path.join(bath_path,"cat_12_train/i6duIYpPQTK0FgVa2eRBUCytcjEqr3v1.jpg")
+    # img = Image.open(pre_img_path)
+    # img = img.convert('RGB')
+    # img = default_transform(img)
+    # img = img.unsqueeze(0)
+    # pre_res = predict(img, model, device)
+    # print("pre: ", pre_res)
 
+    # 批量预测
+    # test_images文件夹批量预测
+    import pathlib
+    import os
+    # import paddlex as pdx
+
+    # 载入模型
+    # model = pdx.load_model('output/mobilenetv3_large/best_model')
+
+    # 结果文件
+    f = open("result.csv", "w")
+    # f.write('image_id,label\n')
+    # 遍历文件夹
+    # G:\Users\AiStudio_cat12\cat_12_test
+    # test_data_dir = pathlib.Path('data/test_images/')
+    test_data_dir = pathlib.Path(r'G://Users//AiStudio_cat12//cat_12_test')
+    # 不带目录，直接图片
+    test_files = list(test_data_dir.glob('*.jpg'))
+    for myfile in test_files:
+        filename = os.path.basename(myfile)
+
+        cur_img = read_img(r'G://Users//AiStudio_cat12//cat_12_test', img_name=filename)
+        # pre_res = predict(cur_img, model, device)
+        # 使用训练结束后的模型，参数是被训练过的
+        pre_res = predict(cur_img, model_trained, device)
+        print("img_name:{},pre: {}".format(filename, pre_res))
+        
+        # result = model.predict(str(myfile))
+        # filename = os.path.basename(myfile)
+        # 写入文件
+        # f.write(f"{filename},{result[0]['category_id']}\n")
+        f.write(f"cat_12_test/{filename},{pre_res}\n")
+    f.close()
