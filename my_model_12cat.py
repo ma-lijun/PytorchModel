@@ -124,7 +124,7 @@ dataset_size = train_data.__len__()
 # resnet=resnet50(pretrained=True)
 # resnet.load_state_dict(torch.load('ckp/model.pth'))
 
-def initialize_model(model_name, num_categories, finetuning=False, pretrained=True, model_path=None):
+def initialize_model(model_name, num_categories, finetuning=False, pretrained=True):
 
     if model_name == 'resnet18':
         model = models.resnet18(pretrained=pretrained)
@@ -218,7 +218,8 @@ def train_model(model, criterion, optimizer, scheduler, pre_epoch, num_epochs):
     return model
 
 #  todo 预测时候注销，初次训练使用?
-model = initialize_model('resnet18', num_categories, model_path=True)
+# model = initialize_model('resnet18', num_categories, model_path=True)
+model = initialize_model('resnet18', num_categories)
 # model = models.resnet34()
 num_ftrs = model.fc.in_features
 model.fc = nn.Linear(num_ftrs, num_categories)
@@ -265,13 +266,16 @@ if __name__ == '__main__':
     #
     # #example
     # resnet=resnet50(pretrained=True)
-    # checkpoint = torch.load('./state_best.tar')
+    # todo 模型具有train()/eval() 两个方法，预测时要保证model在eval模式下
+    model.eval()
+
+    checkpoint = torch.load('./state_best.tar')
     # state_best_score_0.9083.tar
     # checkpoint = torch.load('./state_best_score_0.9083.tar')
-    # model.load_state_dict(checkpoint['model_state_dict'])
+    model.load_state_dict(checkpoint['model_state_dict'])
     model.to(device)
 
-    model_trained = train_model(model, criterion, optimizer, exp_lr_scheduler, pre_epoch, 15)
+    # model_trained = train_model(model, criterion, optimizer, exp_lr_scheduler, pre_epoch, 15)
 
 
     # 单文件预测
@@ -299,9 +303,9 @@ if __name__ == '__main__':
 
         cur_img = read_img(r'G://Users//AiStudio_cat12//cat_12_test', img_name=filename)
         # 使用训练结束后的模型，参数是被训练过的
-        pre_res = predict(cur_img, model_trained, device)
-        # pre_res = predict(cur_img, model, device)
-        print("img_name:{},pre: {}".format(filename, pre_res))
+        # pre_res = predict(cur_img, model_trained, device)
+        pre_res = predict(cur_img, model, device)
+        # print("img_name:{},pre: {}".format(filename, pre_res))
         # 写入文件
         # f.write(f"cat_12_test/{filename},{pre_res}\n")
         f.write(f"{filename},{pre_res}\n")
