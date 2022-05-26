@@ -45,6 +45,12 @@ default_transform = transforms.Compose(
      ]
 )
 
+valid_transform = transforms.Compose([
+    transforms.Resize(INPUT_SIZE),
+    transforms.ToTensor(),
+    transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+                                      ])
+
 normalize_torch = transforms.Normalize(
     mean=[0.485, 0.456, 0.406],
     std=[0.229, 0.224, 0.225]
@@ -254,7 +260,9 @@ def read_img(bath_path, img_name=""):
     img = Image.open(pre_img_path)
     # img.show()
     img = img.convert('RGB')
-    img = default_transform(img)
+    # img = default_transform(img)
+    # valid_transform
+    img = valid_transform(img)
     # 扩展第一维度，bach * chanel * height * width
     img = img.unsqueeze(0)
     return img
