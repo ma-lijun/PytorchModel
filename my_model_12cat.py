@@ -130,6 +130,7 @@ dataset_size = train_data.__len__()
 # resnet=resnet50(pretrained=True)
 # resnet.load_state_dict(torch.load('ckp/model.pth'))
 
+
 def initialize_model(model_name, num_categories, finetuning=False, pretrained=True):
 
     if model_name == 'resnet18':
@@ -144,6 +145,16 @@ def initialize_model(model_name, num_categories, finetuning=False, pretrained=Tr
         model = model.to(device)
     elif model_name == 'resnet34':
         model = models.resnet34(pretrained=pretrained)
+        if finetuning == True:
+            pass
+        else:
+            for param in model.parameters():
+                param.requires_grad = False
+        num_ftrs = model.fc.in_features
+        model.fc = nn.Linear(num_ftrs, num_categories)
+        model = model.to(device)
+    elif model_name == 'resnet152':
+        model = models.resnet152(pretrained=pretrained)
         if finetuning == True:
             pass
         else:
