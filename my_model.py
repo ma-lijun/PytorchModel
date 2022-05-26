@@ -132,7 +132,7 @@ def train_model(model, criterion, optimizer, scheduler, pre_epoch, num_epochs):
 
             if phase == 'val' and epoch_acc> best_acc:
                 best_acc = epoch_acc
-                checkpoint_path = 'state_best.tar'
+                checkpoint_path = 'state_best_resnet18.tar'
                 torch.save({'epoch':epoch,
                             'model_state_dict':model.state_dict(),
                             'optimizer_state_dict': optimizer.state_dict(),
@@ -144,7 +144,7 @@ def train_model(model, criterion, optimizer, scheduler, pre_epoch, num_epochs):
     time_elapsed = time.time() - since
     print('Training complate in {:.0f}m {:.0f}s'.format_map(time_elapsed//60, time_elapsed%60))
     print('Best val Acc: {:.4f}'.format(best_acc))
-    checkpoint = torch.load('./checkpoints/state_best.tar')
+    checkpoint = torch.load('./checkpoints/state_best_resnet18.tar')
     model.load_state_dict(checkpoint['model_state_dict'])
     return model
 
