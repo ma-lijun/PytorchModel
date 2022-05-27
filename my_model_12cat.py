@@ -19,9 +19,10 @@ num_categories = 12
 # train images path
 images_folder_train = ''
 # train txt path
-txt_train = r'G:\Users\AiStudio_cat12\train_list.txt'
+# E:\data\cat12
+txt_train = r'E:\data\cat12\train_list.txt'
 # file bath path
-bath_path = r'G://Users//AiStudio_cat12'
+bath_path = r'E:\data\cat12'
 
 # valid images path
 images_folder_val = ''
@@ -39,9 +40,12 @@ def default_loader(path):
 default_transform = transforms.Compose(
     [transforms.Resize(ORIGIN_SIZE, Image.BILINEAR),
      transforms.RandomCrop(INPUT_SIZE),
-     transforms.RandomHorizontalFlip(),
+     transforms.RandomHorizontalFlip(p=0.5),
+     transforms.RandomVerticalFlip(p=0.5),
+     # 0.3 的灰度
+     transforms.RandomGrayscale(p=0.3),
      transforms.ToTensor(),
-     transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+     transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
      ]
 )
 
@@ -214,7 +218,7 @@ def train_model(model, criterion, optimizer, scheduler, pre_epoch, num_epochs, m
 
             if phase == 'val' and epoch_acc> best_acc:
                 best_acc = epoch_acc
-                checkpoint_path = 'state_best.tar'
+                checkpoint_path = 'state_best_'+model_name+'.tar'
                 # checkpoint_path = 'state_best_score_'+'{:.4f}'.format(best_acc)+'.tar'
                 torch.save({'epoch':epoch,
                             'model_name': model_name,
@@ -231,13 +235,14 @@ def train_model(model, criterion, optimizer, scheduler, pre_epoch, num_epochs, m
     time_elapsed = time.time() - since
     print('Training complate in {:.0f}m {:.0f}s'.format(time_elapsed//60, time_elapsed%60))
     print('Best val Acc: {:.4f}'.format(best_acc))
-    checkpoint = torch.load('./state_best.tar')
+    checkpoint = torch.load('./state_best_'+model_name+'.tar')
     model.load_state_dict(checkpoint['model_state_dict'])
     return model
 
 #  todo 预测时候注销，初次训练使用?
 # model = initialize_model('resnet18', num_categories, model_path=True)
 model = initialize_model('resnet18', num_categories)
+# model = initialize_model('resnet152', num_categories)
 # model = models.resnet34()
 num_ftrs = model.fc.in_features
 model.fc = nn.Linear(num_ftrs, num_categories)
@@ -287,15 +292,14 @@ if __name__ == '__main__':
     # #example
     # resnet=resnet50(pretrained=True)
     # todo 模型具有train()/eval() 两个方法，预测时要保证model在eval模式下
-    model.eval()
-
-    checkpoint = torch.load('./state_best.tar')
-    # state_best_score_0.9083.tar
-    # checkpoint = torch.load('./state_best_score_0.9083.tar')
-    model.load_state_dict(checkpoint['model_state_dict'])
+    # model.eval()
+    # checkpoint = torch.load('./state_best_resnet152.tar')
+    # model.load_state_dict(checkpoint['model_state_dict'])
     model.to(device)
 
-    # model_trained = train_model(model, criterion, optimizer, exp_lr_scheduler, pre_epoch, 15)
+    # todo train
+    # model_trained = train_model(model, criterion, optimizer, exp_lr_scheduler, pre_epoch, 10, model_name='resnet152')
+    model_trained = train_model(model, criterion, optimizer, exp_lr_scheduler, 0, 50, model_name='resnet152')
 
 
     # 单文件预测
@@ -315,16 +319,16 @@ if __name__ == '__main__':
     f = open("result.csv", "w")
     # f.write('image_id,label\n')
     # 遍历文件夹
-    test_data_dir = pathlib.Path(r'G://Users//AiStudio_cat12//cat_12_test')
+    test_data_dir = pathlib.Path(r'E:\data\cat12\cat_12_test')
     # 不带目录，直接图片
     test_files = list(test_data_dir.glob('*.jpg'))
     for myfile in test_files:
         filename = os.path.basename(myfile)
 
-        cur_img = read_img(r'G://Users//AiStudio_cat12//cat_12_test', img_name=filename)
+        cur_img = read_img(r'E:\data\cat12\cat_12_test', img_name=filename)
         # 使用训练结束后的模型，参数是被训练过的
-        # pre_res = predict(cur_img, model_trained, device)
-        pre_res = predict(cur_img, model, device)
+        pre_res = predict(cur_img, model_trained, device)
+        # pre_res = predict(cur_img, model, device)
         # print("img_name:{},pre: {}".format(filename, pre_res))
         # 写入文件
         # f.write(f"cat_12_test/{filename},{pre_res}\n")
