@@ -136,13 +136,13 @@ def initialize_model(model_name, num_categories, finetuning=False, pretrained=Tr
         else:
             # for param in model.parameters():
 
-            if finetuning:
-                for p_name, param in model.named_parameters():
-                    param.requires_grad = False
-                model.layer4[-1] = models.resnet.BasicBlock(512, 512)
-            else:
-                for p_name, param in model.named_parameters():
-                    param.requires_grad = False
+            # if finetuning:
+            #     for p_name, param in model.named_parameters():
+            #         param.requires_grad = False
+            #     model.layer4[-1] = models.resnet.BasicBlock(512, 512)
+            # else:
+            for p_name, param in model.named_parameters():
+                param.requires_grad = False
         num_ftrs = model.fc.in_features
         model.fc = nn.Linear(num_ftrs, num_categories)
         model = model.to(device)
@@ -250,7 +250,7 @@ def train_model(model, criterion, optimizer, scheduler, pre_epoch, num_epochs, m
 #  todo 预测时候注销，初次训练使用?
 # model = initialize_model('resnet18', num_categories, model_path=True)
 # model = initialize_model('resnet34', num_categories)
-model = initialize_model('resnet152', num_categories)
+model = initialize_model('resnet152', num_categories, finetuning=True)
 # model = models.resnet34()
 num_ftrs = model.fc.in_features
 model.fc = nn.Linear(num_ftrs, num_categories)
@@ -293,7 +293,7 @@ def read_img(bath_path, img_name=""):
 
 
 if __name__ == '__main__':
-    model = initialize_model('resnet152', num_categories, finetuning=True)
+    # model = initialize_model('resnet152', num_categories, finetuning=True)
 
     train_data = MyImageDataset(txt_path=txt_train, path_pre=bath_path, transform=default_transform)
     # test_data = MyImageDataset(images_folder_train, transform=transform)
@@ -317,7 +317,7 @@ if __name__ == '__main__':
 
     # todo train
     # model_trained = train_model(model, criterion, optimizer, exp_lr_scheduler, pre_epoch, 10, model_name='resnet152')
-    model_trained = train_model(model, criterion, optimizer, exp_lr_scheduler, 0, 50, model_name='resnet152')
+    model_trained = train_model(model, criterion, optimizer, exp_lr_scheduler, 0, 10, model_name='resnet152')
 
 
     # 单文件预测
