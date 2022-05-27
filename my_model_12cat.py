@@ -115,14 +115,6 @@ class MyImageDataset(Dataset):
         return img, label
 
 
-train_data = MyImageDataset(txt_path=txt_train, path_pre=bath_path, transform=default_transform)
-# test_data = MyImageDataset(images_folder_train, transform=transform)
-
-train_loader = torch.utils.data.DataLoader(dataset=train_data, batch_size=4, shuffle=True)
-# test_loader = torch.utils.data.DataLoader(dataset=test_data, batch_size=4)
-
-dataset_size = train_data.__len__()
-
 # 官方推荐模型加载方法（只恢复模型参数）
 # model = ModelClass(*args, **kwargs)
 # model.load_state_dict(torch.load(PATH))
@@ -137,19 +129,33 @@ def initialize_model(model_name, num_categories, finetuning=False, pretrained=Tr
     if model_name == 'resnet18':
         model = models.resnet18(pretrained=pretrained)
         if finetuning == True:
-            pass
+            for p_name, param in model.named_parameters():
+                if not p_name.startswith('layer4.1'):
+                    param.requires_grad = False
+            model.layer4[-1] = models.resnet.BasicBlock(512, 512)
         else:
-            for param in model.parameters():
-                param.requires_grad = False
+            # for param in model.parameters():
+
+            if finetuning:
+                for p_name, param in model.named_parameters():
+                    param.requires_grad = False
+                model.layer4[-1] = models.resnet.BasicBlock(512, 512)
+            else:
+                for p_name, param in model.named_parameters():
+                    param.requires_grad = False
         num_ftrs = model.fc.in_features
         model.fc = nn.Linear(num_ftrs, num_categories)
         model = model.to(device)
     elif model_name == 'resnet34':
         model = models.resnet34(pretrained=pretrained)
         if finetuning == True:
-            pass
+            for p_name, param in model.named_parameters():
+                if not p_name.startswith('layer4.1'):
+                    param.requires_grad = False
+            model.layer4[-1] = models.resnet.BasicBlock(512, 512)
+
         else:
-            for param in model.parameters():
+            for p_name, param in model.named_parameters():
                 param.requires_grad = False
         num_ftrs = model.fc.in_features
         model.fc = nn.Linear(num_ftrs, num_categories)
@@ -157,10 +163,15 @@ def initialize_model(model_name, num_categories, finetuning=False, pretrained=Tr
     elif model_name == 'resnet152':
         model = models.resnet152(pretrained=pretrained)
         if finetuning == True:
-            pass
+            for p_name, param in model.named_parameters():
+                if not p_name.startswith('layer4.2'):
+                    param.requires_grad = False
+            model.layer4[-1] = models.resnet.Bottleneck(2048, 512)
+
         else:
             for param in model.parameters():
                 param.requires_grad = False
+
         num_ftrs = model.fc.in_features
         model.fc = nn.Linear(num_ftrs, num_categories)
         model = model.to(device)
@@ -238,8 +249,8 @@ def train_model(model, criterion, optimizer, scheduler, pre_epoch, num_epochs, m
 
 #  todo 预测时候注销，初次训练使用?
 # model = initialize_model('resnet18', num_categories, model_path=True)
-model = initialize_model('resnet18', num_categories)
-# model = initialize_model('resnet152', num_categories)
+# model = initialize_model('resnet34', num_categories)
+model = initialize_model('resnet152', num_categories)
 # model = models.resnet34()
 num_ftrs = model.fc.in_features
 model.fc = nn.Linear(num_ftrs, num_categories)
@@ -282,6 +293,16 @@ def read_img(bath_path, img_name=""):
 
 
 if __name__ == '__main__':
+    model = initialize_model('resnet152', num_categories, finetuning=True)
+
+    train_data = MyImageDataset(txt_path=txt_train, path_pre=bath_path, transform=default_transform)
+    # test_data = MyImageDataset(images_folder_train, transform=transform)
+
+    train_loader = torch.utils.data.DataLoader(dataset=train_data, batch_size=4, shuffle=True)
+    # test_loader = torch.utils.data.DataLoader(dataset=test_data, batch_size=4)
+
+    dataset_size = train_data.__len__()
+
     # todo 模型恢复示例
     # model = ModelClass(*args, **kwargs)
     # model.load_state_dict(torch.load(PATH))
