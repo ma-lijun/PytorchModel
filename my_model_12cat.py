@@ -196,13 +196,13 @@ def initialize_model(model_name, num_categories, finetuning=False, pretrained=Tr
         else:
             # for param in model.parameters():
 
-            if finetuning:
-                for p_name, param in model.named_parameters():
-                    param.requires_grad = False
-                model.layer4[-1] = models.resnet.BasicBlock(512, 512)
-            else:
-                for p_name, param in model.named_parameters():
-                    param.requires_grad = False
+            # if finetuning:
+            #     for p_name, param in model.named_parameters():
+            #         param.requires_grad = False
+            #     model.layer4[-1] = models.resnet.BasicBlock(512, 512)
+            # else:
+            for p_name, param in model.named_parameters():
+                param.requires_grad = False
         num_ftrs = model.fc.in_features
         model.fc = nn.Linear(num_ftrs, num_categories)
         model = model.to(device)
@@ -319,6 +319,22 @@ def train_model(model, criterion, optimizer, scheduler, pre_epoch, num_epochs, m
     return model
 
 
+#  todo 预测时候注销，初次训练使用?
+# model = initialize_model('resnet18', num_categories, model_path=True)
+# model = initialize_model('resnet34', num_categories)
+model = initialize_model('resnet152', num_categories, finetuning=True)
+# model = models.resnet34()
+num_ftrs = model.fc.in_features
+model.fc = nn.Linear(num_ftrs, num_categories)
+optimizer = optim.SGD(model.fc.parameters(), lr=0.001, momentum=0.9)
+criterion = nn.CrossEntropyLoss()
+# 每隔7个epoch学习率下降一次
+exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+pre_epoch = 0
+
+# model_trained = train_model(model, criterion, optimizer, exp_lr_scheduler, pre_epoch, 10)
+
+
 # predict function
 def predict(input, model, device):
     # model.to(device)
@@ -354,16 +370,17 @@ if __name__ == '__main__':
     # model = initialize_model('resnet18', num_categories, finetuning=True)
     # todo 变量设置
     model_name = "mobilenet_v3_small"
-    # para_dict = {"model_name": model_name, "opt_param": }
-    model = initialize_model(model_name, num_categories)
+    # # para_dict = {"model_name": model_name, "opt_param": }
+    # model = initialize_model(model_name, num_categories)
+    #
+    # if model_name.startswith("res"):
+    #     # 0.025 loss 不减
+    #     optimizer = optim.SGD(model.fc.parameters(), lr=0.0025, momentum=0.9)
+    # elif model_name.startswith("mobile"):
+    #     optimizer = optim.SGD(model.classifier[-1].parameters(), lr=0.0025, momentum=0.9)
+    # else:
+    #     optimizer = optim.SGD(model.fc.parameters(), lr=0.0025, momentum=0.9)
 
-    if model_name.startswith("res"):
-        # 0.025 loss 不减
-        optimizer = optim.SGD(model.fc.parameters(), lr=0.0025, momentum=0.9)
-    elif model_name.startswith("mobile"):
-        optimizer = optim.SGD(model.classifier[-1].parameters(), lr=0.0025, momentum=0.9)
-    else:
-        optimizer = optim.SGD(model.fc.parameters(), lr=0.0025, momentum=0.9)
 
     criterion = nn.CrossEntropyLoss()
     # 每隔7个epoch学习率下降一次
@@ -391,8 +408,10 @@ if __name__ == '__main__':
 
     # todo train
     # model_trained = train_model(model, criterion, optimizer, exp_lr_scheduler, pre_epoch, 10, model_name='resnet152')
+
     # model_trained = train_model(model, criterion, optimizer, exp_lr_scheduler, 0, 30, model_name='resnet152')
     model_trained = train_model(model, criterion, optimizer, exp_lr_scheduler, 0, 30, model_name=model_name)
+
 
     # 单文件预测
     # pre_img_path = os.path.join(bath_path,"cat_12_train/i6duIYpPQTK0FgVa2eRBUCytcjEqr3v1.jpg")
