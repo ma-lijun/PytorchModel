@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 from __future__ import print_function, division
 
 import shutil
@@ -16,6 +17,8 @@ from torch.utils.data import Dataset
 import pandas as pd
 import numpy as np
 from filter_img import check_one_img
+from BOTNet import ResNet50 as BoTNet50
+import timm
 
 num_categories = 12
 # train images path
@@ -27,7 +30,9 @@ images_folder_train = ''
 # file bath path
 # G:\Users\AiStudio_cat12\cat_12_train
 # bath_path = r'E:\data\cat12'
-bath_path = r'G:\Users\AiStudio_cat12'
+# bath_path = r'G:\Users\AiStudio_cat12'
+# C:\Users\zzsoft\ml\data
+bath_path = r'C:\Users\zzsoft\ml\data\AiStudio_cat12'
 
 txt_train = bath_path + r'\train_list.txt'
 txt_valid = bath_path + r'\valid_list.txt'
@@ -50,12 +55,12 @@ def default_loader(path):
 
 default_transform = transforms.Compose(
     [
-        transforms.ColorJitter(0.5, 0.5, 0.5, 0.5),  # 随机调整图像的亮度，对比度，饱和度和色调
+        # transforms.ColorJitter(0.5, 0.5, 0.5, 0.5),  # 随机调整图像的亮度，对比度，饱和度和色调
         transforms.Resize(ORIGIN_SIZE),
         transforms.RandomResizedCrop(INPUT_SIZE),      # 将输入图像按照随机大小和长宽比进行裁剪
         transforms.RandomHorizontalFlip(),           # 基于概率来执行图片的水平翻转
         transforms.RandomRotation(degrees=15),       # 依据degrees参数指定的角度范围，按照均匀分布随机产生一个角度对图像进行旋转
-     transforms.RandomHorizontalFlip(),
+     # transforms.RandomHorizontalFlip(),
      transforms.ToTensor(),
      # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
      transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
@@ -117,8 +122,7 @@ def create_train_eval():
         for i in range(len(data)):
             img_path = data[i].split('\t')[0]
             class_label = data[i].split('\t')[1][:-1]
-            # if i % 8 == 0:  # 每8张图片取一个做验证数据
-            if i % 7 == 0:  # 每7张图片取一个做验证数据
+            if i % 8 == 0:  # 每8张图片取一个做验证数据
                 with open(eval_list_path, 'a+') as ef:
                     ef.write(data[i])
                 eval_img_path = os.path.join(source_imges_path, img_path)
@@ -234,6 +238,20 @@ def initialize_model(model_name, num_categories, finetuning=False, pretrained=Tr
         num_ftrs = model.fc.in_features
         model.fc = nn.Linear(num_ftrs, num_categories)
         model = model.to(device)
+    elif model_name == 'resnet50':
+        model = models.resnet50(pretrained=pretrained)
+        if finetuning == True:
+            for p_name, param in model.named_parameters():
+                if not p_name.startswith('layer4.1'):
+                    param.requires_grad = False
+            model.layer4[-1] = models.resnet.BasicBlock(512, 512)
+
+        else:
+            for p_name, param in model.named_parameters():
+                param.requires_grad = False
+        num_ftrs = model.fc.in_features
+        model.fc = nn.Linear(num_ftrs, num_categories)
+        model = model.to(device)
     elif model_name == 'resnet152':
         model = models.resnet152(pretrained=pretrained)
         if finetuning == True:
@@ -256,6 +274,22 @@ def initialize_model(model_name, num_categories, finetuning=False, pretrained=Tr
         # last_channel, num_classes
         num_ftrs = model.classifier[-1].in_features
         model.classifier[-1] = nn.Linear(num_ftrs, num_categories)
+        model = model.to(device)
+    elif model_name == 'BoTNet50':
+        model = BoTNet50(num_classes=num_categories)
+        # for param in model.parameters():
+        #     param.requires_grad = False
+        # # last_channel, num_classes
+        # num_ftrs = model.classifier[-1].in_features
+        # model.classifier[-1] = nn.Linear(num_ftrs, num_categories)
+        model = model.to(device)
+    elif model_name == "swinTrans":
+        model = timm.create_model('swin_base_patch4_window7_224', pretrained=True)
+        for param in model.parameters():
+            param.requires_grad = False
+        # last_channel, num_classes
+        num_ftrs = model.head.in_features
+        model.head = nn.Linear(num_ftrs, num_categories)
         model = model.to(device)
     else:
         model = None
@@ -291,7 +325,7 @@ def train(model, criterion, optimizer, _dataloader="train_loader", size=1):
 
     epoch_acc = float(running_corrects) / dataset_size
     epoch_loss = running_loss / dataset_size
-    print(f"Train Error: \n Accuracy: {(100 * epoch_acc):>0.1f}%, Avg loss: {epoch_loss:>8f} \n")
+    print(f"Train Error: \n Accuracy: {(100 * epoch_acc):>0.1f}%, Avg loss: {epoch_loss:>8f} LR:{optimizer.param_groups[0].get('lr')} \n")
 
     return epoch_loss, epoch_acc
 
@@ -374,22 +408,30 @@ if __name__ == '__main__':
     # todo 变量设置
     # model_name = "mobilenet_v3_small"
     # model_name = "resnet18"
-    model_name = "resnet152"
+    # model_name = "resnet50"
+    # model_name = "BoTNet50"
+    model_name = "swinTrans"
     # para_dict = {"model_name": model_name, "opt_param": }
     model = initialize_model(model_name, num_categories)
 
     if model_name.startswith("res"):
         # 0.025 loss 不减
         # optimizer = optim.SGD(model.fc.parameters(), lr=0.0025, momentum=0.9)
-        optimizer = optim.SGD(model.fc.parameters(), lr=0.001, momentum=0.9)
+        # optimizer = optim.SGD(model.fc.parameters(), lr=0.00025, momentum=0.9)
+        # 迁移学习使用lr 0.00025 ，非迁移学习使用0.001
+        # optimizer = optim.SGD(model.fc.parameters(), lr=0.025, momentum=0.9)
+        optimizer = optim.SGD(model.fc.parameters(), lr=0.1, momentum=0.9)
+        # optimizer = optim.Adam(model.fc.parameters(), lr=0.00001)
     elif model_name.startswith("mobile"):
         optimizer = optim.SGD(model.classifier[-1].parameters(), lr=0.0025, momentum=0.9)
     else:
-        optimizer = optim.SGD(model.fc.parameters(), lr=0.0025, momentum=0.9)
+        # optimizer = optim.SGD(model.fc.parameters(), lr=0.0025, momentum=0.9)
+        # optimizer = optim.SGD(model.fc.parameters(), lr=0.025, momentum=0.9)
+        optimizer = optim.SGD(model.parameters(), lr=0.025, momentum=0.9)
 
     # criterion = nn.CrossEntropyLoss()
     # 每隔7个epoch学习率下降一次
-    exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=6, gamma=0.1)
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=6, gamma=0.2)
     # pre_epoch = 0
     train_data = MyImageDataset(txt_path=train_parameters.get("train_image_txt"),
                                 img_dir=train_parameters.get("train_image_dir_bath"), path_pre=bath_path,
@@ -402,8 +444,8 @@ if __name__ == '__main__':
 
     # train_loader = torch.utils.data.DataLoader(dataset=train_data, batch_size=4, shuffle=True)
     # valid_loader = torch.utils.data.DataLoader(dataset=valid_data, batch_size=4)
-    train_loader = torch.utils.data.DataLoader(dataset=train_data, batch_size=6, shuffle=True)
-    valid_loader = torch.utils.data.DataLoader(dataset=valid_data, batch_size=6)
+    train_loader = torch.utils.data.DataLoader(dataset=train_data, batch_size=32, shuffle=True)
+    valid_loader = torch.utils.data.DataLoader(dataset=valid_data, batch_size=32)
 
     # todo 模型恢复示例
     # model = ModelClass(*args, **kwargs)
@@ -428,7 +470,8 @@ if __name__ == '__main__':
     since = time.time()
 
     for t in range(epochs):
-        print(f"Epoch {t + 1}\n-------------------------------")
+
+        print(f"Epoch {t + 1} , lr: {optimizer.param_groups[0].get('lr')}\n-------------------------------")
         # train(train_dataloader, model, loss_fn, optimizer)
         # train(model, loss_fn, optimizer, exp_lr_scheduler, _dataloader=train_loader, size=train_dataset_size)
         train(model, loss_fn, optimizer, _dataloader=train_loader, size=train_dataset_size)
@@ -441,7 +484,7 @@ if __name__ == '__main__':
             best_acc = v_acc
             model_trained = save_model(v_acc, model_name, t + 1, v_loss)
         cur_time_elapsed = time.time() - since
-        print('Epoch {:.0f}s：Training complate in {:.0f}m {:.0f}s'.format(t+1, cur_time_elapsed // 60,
+        print('Epoch {:.0f}s:Training complate in {:.0f}m {:.0f}s'.format(t+1, cur_time_elapsed // 60,
                                                                           cur_time_elapsed % 60))
         print()
     print("Done!")
